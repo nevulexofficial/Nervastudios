@@ -1,0 +1,6 @@
+{
+  "name": "NERVA",
+  "description": "Manager de fútbol moderno con ligas, clasificaciones, tácticas personalizables, mercado de fichajes, foro de directores técnicos y motor de partidos 2D en tiempo real.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
