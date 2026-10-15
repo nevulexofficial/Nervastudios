@@ -39,14 +39,32 @@ enum class AppBackgroundTheme(
     val subtitle: String,
     val primaryColorHex: Long,
     val secondaryColorHex: Long,
-    val previewIcon: String
+    val previewIcon: String,
+    val isLight: Boolean = false
 ) {
+    NEGRO_ABSOLUTO(
+        "Negro Puro OLED",
+        "Estética oscura profunda AAA ultra contraste",
+        0xFF121212,
+        0xFF000000,
+        "🖤",
+        false
+    ),
+    BLANCO_LUMINOSO(
+        "Blanco Nieve & Titanio",
+        "Modo claro limpio, brillante y elegante",
+        0xFFE2E8F0,
+        0xFFF8FAFC,
+        "🤍",
+        true
+    ),
     ESTADIO_NOCTURNO(
         "Estadio Nocturno",
         "Ambiente bajo los focos del Nerva Arena",
         0xFF0A192F,
         0xFF020C1B,
-        "🏟️"
+        "🏟️",
+        false
     ),
     CYBER_NEON(
         "Cyber Neon 2026",

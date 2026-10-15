@@ -170,6 +170,8 @@ fun NervaApp(
                                         name, shortName, motto, mgr, std, pCol, sCol, shape, symbol, bCol, banner
                                     )
                                 },
+                                onUploadCustomLogo = { uri, b64 -> viewModel.uploadClubCustomLogo(uri, b64) },
+                                onRemoveCustomLogo = { viewModel.removeClubCustomLogo() },
                                 onNavigate = { dest -> viewModel.navigateTo(dest) }
                             )
                         }
@@ -213,8 +215,13 @@ fun NervaApp(
                                 },
                                 onToggleMusic = { viewModel.toggleMusic() },
                                 onNextTrack = { viewModel.nextMusicTrack() },
+                                onSelectTrack = { viewModel.selectMusicTrack(it) },
                                 onSetMusicVolume = { viewModel.setMusicVolume(it) },
                                 onSetCustomAudioUrl = { viewModel.setCustomAudioUrl(it) },
+                                onPlayWhistle = { viewModel.playSfxWhistle() },
+                                onPlayGoalHorn = { viewModel.playSfxGoalHorn() },
+                                onPlayCrowdCheer = { viewModel.playSfxCrowdCheer() },
+                                onPreviewLoadingScreen = { viewModel.navigateTo(ScreenDestination.SPLASH) },
                                 onNavigate = { dest -> viewModel.navigateTo(dest) }
                             )
                         }
@@ -298,7 +305,11 @@ fun NervaApp(
                         }
 
                         ScreenDestination.AJUSTES -> {
-                            SettingsScreen(userClub = userClub)
+                            SettingsScreen(
+                                userClub = userClub,
+                                currentTheme = backgroundTheme,
+                                onSelectTheme = { viewModel.setBackgroundTheme(it) }
+                            )
                         }
 
                         ScreenDestination.MATCH_2D -> {

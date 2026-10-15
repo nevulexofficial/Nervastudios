@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -78,6 +79,11 @@ fun AdminScreen(
     onNextTrack: () -> Unit,
     onSetMusicVolume: (Float) -> Unit,
     onSetCustomAudioUrl: (String) -> Unit,
+    onSelectTrack: (Int) -> Unit = {},
+    onPlayWhistle: () -> Unit = {},
+    onPlayGoalHorn: () -> Unit = {},
+    onPlayCrowdCheer: () -> Unit = {},
+    onPreviewLoadingScreen: () -> Unit = {},
     onNavigate: (ScreenDestination) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -232,8 +238,13 @@ fun AdminScreen(
                     customAudioUrl = customAudioUrl,
                     onToggleMusic = onToggleMusic,
                     onNextTrack = onNextTrack,
+                    onSelectTrack = onSelectTrack,
                     onSetMusicVolume = onSetMusicVolume,
-                    onSetCustomAudioUrl = onSetCustomAudioUrl
+                    onSetCustomAudioUrl = onSetCustomAudioUrl,
+                    onPlayWhistle = onPlayWhistle,
+                    onPlayGoalHorn = onPlayGoalHorn,
+                    onPlayCrowdCheer = onPlayCrowdCheer,
+                    onPreviewLoadingScreen = onPreviewLoadingScreen
                 )
             }
         }
@@ -650,10 +661,22 @@ private fun AudioTab(
     customAudioUrl: String,
     onToggleMusic: () -> Unit,
     onNextTrack: () -> Unit,
+    onSelectTrack: (Int) -> Unit,
     onSetMusicVolume: (Float) -> Unit,
-    onSetCustomAudioUrl: (String) -> Unit
+    onSetCustomAudioUrl: (String) -> Unit,
+    onPlayWhistle: () -> Unit,
+    onPlayGoalHorn: () -> Unit,
+    onPlayCrowdCheer: () -> Unit,
+    onPreviewLoadingScreen: () -> Unit
 ) {
     var audioUrlInput by remember { mutableStateOf(customAudioUrl) }
+
+    val presetTracks = listOf(
+        Triple("👑", "Himno Nerva Champions", "Épica sinfónica orquestal con metales y marcha triunfal"),
+        Triple("⚡", "Electro Matchday Hype", "Pumping trap & synth bass a 130 BPM estilo EA Sports FC"),
+        Triple("🕹️", "Retro Stadium 16-Bit", "Chiptune arcade vintage nostálgico de consolas clásicas"),
+        Triple("🇧🇷", "Samba de Janeiro", "Ritmo de batucada carnavalera, percusión viva y fiesta de gol")
+    )
 
     Card(
         modifier = Modifier.fillMaxSize(),
@@ -667,69 +690,383 @@ private fun AudioTab(
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("SISTEMA DE MÚSICA & AUDIO PERSONALIZADO", color = NervaCyanAccent, fontWeight = FontWeight.Black, fontSize = 13.sp)
-
+            // Header & Status
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(if (isMusicPlaying) "🔊" else "🔈", fontSize = 24.sp)
-                    Column {
-                        Text(
-                            text = if (isMusicPlaying) "MÚSICA REPRODUCIÉNDOSE" else "MÚSICA PAUSADA",
-                            color = if (isMusicPlaying) Color(0xFF10B981) else NervaTextMuted,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 12.sp
-                        )
-                        Text("Pista actual: Track #${currentTrackIndex + 1} - Himno Electro Stadium 2026", color = NervaWhite, fontSize = 11.sp)
-                    }
+                Column {
+                    Text(
+                        "SISTEMA DE MÚSICA & AUDIO DEL JUEGO",
+                        color = NervaCyanAccent,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 14.sp,
+                        letterSpacing = 1.sp
+                    )
+                    Text(
+                        "Configura bandas sonoras, streams MP3, volumen y efectos de sonido en vivo",
+                        color = NervaTextMuted,
+                        fontSize = 11.sp
+                    )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = onToggleMusic,
-                        colors = ButtonDefaults.buttonColors(containerColor = if (isMusicPlaying) Color(0xFFEF4444) else Color(0xFF10B981))
-                    ) {
-                        Text(if (isMusicPlaying) "Pausar Música" else "Reproducir", fontWeight = FontWeight.Bold)
-                    }
-                    Button(
-                        onClick = onNextTrack,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7))
-                    ) {
-                        Text("Siguiente Pista ⏭", fontWeight = FontWeight.Bold)
-                    }
+                // Test Loading Screen Button
+                Button(
+                    onClick = onPreviewLoadingScreen,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("🔄 Ver Pantalla de Carga", color = NervaWhite, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
-            HorizontalDivider(color = Color(0xFF1E355B))
-
-            Text("Volumen de Sonido: ${(musicVolume * 100).toInt()}%", color = NervaWhite, fontSize = 11.sp)
-            Slider(
-                value = musicVolume,
-                onValueChange = onSetMusicVolume,
-                valueRange = 0f..1f,
-                colors = SliderDefaults.colors(thumbColor = NervaCyanAccent, activeTrackColor = NervaCyanAccent)
-            )
-
-            HorizontalDivider(color = Color(0xFF1E355B))
-
-            Text("URL DE AUDIO / MÚSICA PERSONALIZADA:", color = Color(0xFFFFD700), fontWeight = FontWeight.Bold, fontSize = 11.sp)
-            OutlinedTextField(
-                value = audioUrlInput,
-                onValueChange = { audioUrlInput = it },
-                label = { Text("Enlace MP3 / Stream personalizado") },
+            // Current Player Card with Equalizer
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(focusedTextColor = NervaWhite, unfocusedTextColor = NervaWhite)
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF0E1F42))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(if (isMusicPlaying) Color(0xFF10B981) else Color(0xFF334155)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(if (isMusicPlaying) "🔊" else "🔈", fontSize = 24.sp)
+                        }
+
+                        Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = if (isMusicPlaying) "MÚSICA REPRODUCIÉNDOSE" else "MÚSICA PAUSADA",
+                                    color = if (isMusicPlaying) Color(0xFF34D399) else NervaTextMuted,
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 12.sp
+                                )
+
+                                // Animated Equalizer visualizer
+                                if (isMusicPlaying) {
+                                    AnimatedEqualizer()
+                                }
+                            }
+
+                            val trackName = if (customAudioUrl.isNotBlank() && currentTrackIndex == 4) {
+                                "Stream Personalizado: $customAudioUrl"
+                            } else {
+                                presetTracks.getOrNull(currentTrackIndex)?.second ?: "Himno Nerva Champions"
+                            }
+                            Text(
+                                text = trackName,
+                                color = NervaWhite,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+
+                    // Play/Pause & Next Buttons
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = onToggleMusic,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isMusicPlaying) Color(0xFFEF4444) else Color(0xFF10B981)
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                if (isMusicPlaying) "⏸ Pausar" else "▶ Reproducir",
+                                fontWeight = FontWeight.Black,
+                                fontSize = 12.sp
+                            )
+                        }
+                        Button(
+                            onClick = onNextTrack,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("⏭ Siguiente", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+
+            // Volume Control Slider
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF0D1B36), RoundedCornerShape(10.dp))
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Volumen General del Juego:", color = NervaWhite, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("${(musicVolume * 100).toInt()}%", color = NervaCyanAccent, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                }
+                Slider(
+                    value = musicVolume,
+                    onValueChange = onSetMusicVolume,
+                    valueRange = 0f..1f,
+                    colors = SliderDefaults.colors(
+                        thumbColor = NervaCyanAccent,
+                        activeTrackColor = NervaCyanAccent,
+                        inactiveTrackColor = Color(0xFF1E293B)
+                    )
+                )
+            }
+
+            HorizontalDivider(color = Color(0xFF1E355B))
+
+            // Presets Soundtracks Selection Grid
+            Text(
+                "BANDAS SONORAS PREESTABLECIDAS (TOCA PARA ASIGNAR):",
+                color = Color(0xFFFFD700),
+                fontWeight = FontWeight.Black,
+                fontSize = 12.sp
             )
 
-            Button(
-                onClick = { onSetCustomAudioUrl(audioUrlInput) },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD700), contentColor = NervaBlueDeep)
-            ) {
-                Text("Guardar y Asignar Música Personalizada", fontWeight = FontWeight.Black)
+            presetTracks.forEachIndexed { idx, (icon, title, desc) ->
+                val isCurrent = isMusicPlaying && currentTrackIndex == idx
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (isCurrent) Color(0xFF142B59) else Color(0xFF0C1830))
+                        .border(
+                            1.dp,
+                            if (isCurrent) NervaCyanAccent else Color(0xFF1E293B),
+                            RoundedCornerShape(10.dp)
+                        )
+                        .clickable { onSelectTrack(idx) }
+                        .padding(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(icon, fontSize = 24.sp)
+                            Column {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = "Pista ${idx + 1}: $title",
+                                        color = if (isCurrent) NervaCyanAccent else NervaWhite,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp
+                                    )
+                                    if (isCurrent) {
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(Color(0xFF10B981).copy(alpha = 0.25f))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Text("SONANDO AHORA", color = Color(0xFF34D399), fontSize = 9.sp, fontWeight = FontWeight.Black)
+                                        }
+                                    }
+                                }
+                                Text(desc, color = NervaTextMuted, fontSize = 11.sp)
+                            }
+                        }
+
+                        Button(
+                            onClick = { onSelectTrack(idx) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isCurrent) Color(0xFF10B981) else Color(0xFF1E3A8A)
+                            ),
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = if (isCurrent) "Sonando 🎶" else "Poner Música ▶",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
             }
+
+            HorizontalDivider(color = Color(0xFF1E355B))
+
+            // Custom Audio URL & Stream
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF0C1830), RoundedCornerShape(10.dp))
+                    .border(1.dp, Color(0xFF1E355B), RoundedCornerShape(10.dp))
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    "MÚSICA PERSONALIZADA (URL / STREAM MP3 EN VIVO):",
+                    color = Color(0xFFFFD700),
+                    fontWeight = FontWeight.Black,
+                    fontSize = 12.sp
+                )
+                Text(
+                    "Introduce cualquier enlace de audio directo (HTTP/HTTPS) para escuchar tu propia música durante los partidos y menús:",
+                    color = NervaTextMuted,
+                    fontSize = 11.sp
+                )
+
+                OutlinedTextField(
+                    value = audioUrlInput,
+                    onValueChange = { audioUrlInput = it },
+                    placeholder = { Text("https://ejemplo.com/mi_musica_de_futbol.mp3", color = Color(0xFF64748B)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = NervaWhite,
+                        unfocusedTextColor = NervaWhite,
+                        focusedBorderColor = NervaCyanAccent,
+                        unfocusedBorderColor = Color(0xFF334155)
+                    )
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = { onSetCustomAudioUrl(audioUrlInput) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFFFD700),
+                            contentColor = NervaBlueDeep
+                        ),
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("💾 Guardar y Asignar Música Personalizada", fontWeight = FontWeight.Black, fontSize = 11.sp)
+                    }
+
+                    if (audioUrlInput.isNotBlank()) {
+                        OutlinedButton(
+                            onClick = {
+                                audioUrlInput = ""
+                                onSetCustomAudioUrl("")
+                            },
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Quitar URL", color = Color(0xFFEF4444), fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
+
+            HorizontalDivider(color = Color(0xFF1E355B))
+
+            // Sound Effects Soundboard
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF0C1830), RoundedCornerShape(10.dp))
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text("EFECTOS DE ESTADIO (PROBAR SONIDOS EN VIVO):", color = NervaCyanAccent, fontWeight = FontWeight.Black, fontSize = 12.sp)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = onPlayWhistle,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("📢 Silbato Árbitro", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = onPlayGoalHorn,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("🚨 Bocina de Gol", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = onPlayCrowdCheer,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669)),
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("🏟️ Rugido Estadio", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Animated sound equalizer visualizer bars.
+ */
+@Composable
+private fun AnimatedEqualizer() {
+    val infiniteTransition = rememberInfiniteTransition(label = "eq")
+    val h1 by infiniteTransition.animateFloat(
+        initialValue = 4f, targetValue = 18f,
+        animationSpec = infiniteRepeatable(tween(250, easing = LinearEasing), RepeatMode.Reverse),
+        label = "h1"
+    )
+    val h2 by infiniteTransition.animateFloat(
+        initialValue = 16f, targetValue = 6f,
+        animationSpec = infiniteRepeatable(tween(320, easing = LinearEasing), RepeatMode.Reverse),
+        label = "h2"
+    )
+    val h3 by infiniteTransition.animateFloat(
+        initialValue = 8f, targetValue = 20f,
+        animationSpec = infiniteRepeatable(tween(200, easing = LinearEasing), RepeatMode.Reverse),
+        label = "h3"
+    )
+    val h4 by infiniteTransition.animateFloat(
+        initialValue = 18f, targetValue = 8f,
+        animationSpec = infiniteRepeatable(tween(280, easing = LinearEasing), RepeatMode.Reverse),
+        label = "h4"
+    )
+
+    Row(
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        modifier = Modifier.height(20.dp)
+    ) {
+        listOf(h1, h2, h3, h4).forEach { heightVal ->
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(heightVal.dp)
+                    .clip(RoundedCornerShape(1.dp))
+                    .background(Color(0xFF34D399))
+            )
         }
     }
 }

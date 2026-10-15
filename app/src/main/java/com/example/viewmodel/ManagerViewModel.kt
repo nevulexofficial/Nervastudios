@@ -512,6 +512,21 @@ class ManagerViewModel(
         showNotification("¡Club '$name' y lema actualizados!")
     }
 
+    fun uploadClubCustomLogo(uriString: String, base64Data: String = "") {
+        repository.setClubCustomLogo(uriString)
+        viewModelScope.launch {
+            if (supabaseService.isConfigured) {
+                supabaseService.updateClubLogo(userClub.id, uriString, base64Data)
+            }
+        }
+        showNotification("✅ ¡Logo del club subido a la base de datos y actualizado!")
+    }
+
+    fun removeClubCustomLogo() {
+        repository.setClubCustomLogo("")
+        showNotification("Escudo restablecido al formato predeterminado")
+    }
+
     // --- BACKGROUND THEME & MUSIC ---
     fun setBackgroundTheme(theme: AppBackgroundTheme) {
         repository.setBackgroundTheme(theme)
@@ -520,8 +535,12 @@ class ManagerViewModel(
 
     fun toggleMusic() = repository.toggleMusic()
     fun nextMusicTrack() = repository.nextMusicTrack()
+    fun selectMusicTrack(index: Int) = repository.selectMusicTrack(index)
     fun setMusicVolume(vol: Float) = repository.setMusicVolume(vol)
     fun setCustomAudioUrl(url: String) = repository.setCustomAudioUrl(url)
+    fun playSfxWhistle() = com.example.audio.NervaAudioEngine.playWhistle()
+    fun playSfxGoalHorn() = com.example.audio.NervaAudioEngine.playGoalHorn()
+    fun playSfxCrowdCheer() = com.example.audio.NervaAudioEngine.playCrowdCheer()
 
     // --- MODAL CONTROLS ---
     fun openClubEditor() = _uiState.update { it.copy(showClubEditorModal = true) }

@@ -1,5 +1,10 @@
 package com.example.ui.screens
 
+import android.net.Uri
+import android.util.Base64
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,6 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Shield
@@ -23,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -32,6 +40,8 @@ import com.example.model.Club
 import com.example.ui.components.ClubBadge
 import com.example.ui.theme.*
 import com.example.viewmodel.ScreenDestination
+import java.io.File
+import java.io.FileOutputStream
 
 @Composable
 fun ClubEditorScreen(
@@ -49,9 +59,12 @@ fun ClubEditorScreen(
         badgeBorderColorHex: Long,
         bannerStyle: String
     ) -> Unit,
+    onUploadCustomLogo: ((uriString: String, base64Data: String) -> Unit)? = null,
+    onRemoveCustomLogo: (() -> Unit)? = null,
     onNavigate: (ScreenDestination) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var clubName by remember { mutableStateOf(userClub.name) }
     var shortName by remember { mutableStateOf(userClub.shortName) }
     var motto by remember { mutableStateOf(userClub.motto) }
@@ -63,6 +76,25 @@ fun ClubEditorScreen(
     var badgeSymbol by remember { mutableStateOf(userClub.badgeSymbol) }
     var badgeBorderColorHex by remember { mutableStateOf(userClub.badgeBorderColorHex) }
     var bannerStyle by remember { mutableStateOf(userClub.bannerStyle) }
+    var customLogoUri by remember { mutableStateOf(userClub.customLogoUri) }
+
+    // Zero-permission Photo Picker for uploading club logo from device to database
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { pickedUri: Uri? ->
+        pickedUri?.let { uri ->
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val bytes = inputStream?.readBytes() ?: return@let
+                val localFile = File(context.filesDir, "club_logo_${userClub.id}.png")
+                FileOutputStream(localFile).use { it.write(bytes) }
+                val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                val fileUri = "file://${localFile.absolutePath}"
+                customLogoUri = fileUri
+                onUploadCustomLogo?.invoke(fileUri, base64)
+            } catch (_: Exception) {}
+        }
+    }
 
     val previewClub = userClub.copy(
         name = clubName.ifBlank { "MI CLUB" },
@@ -75,7 +107,8 @@ fun ClubEditorScreen(
         badgeShape = badgeShape,
         badgeSymbol = badgeSymbol,
         badgeBorderColorHex = badgeBorderColorHex,
-        bannerStyle = bannerStyle
+        bannerStyle = bannerStyle,
+        customLogoUri = customLogoUri
     )
 
     Column(
@@ -261,6 +294,64 @@ fun ClubEditorScreen(
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.Center
                             )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Custom Logo Upload Card from Device
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F2654))
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = if (customLogoUri != null) "LOGO PERSONALIZADO ACTIVO" else "SUBIR LOGO DESDE DISPOSITIVO",
+                                    color = if (customLogoUri != null) Color(0xFF34D399) else NervaCyanAccent,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+
+                                Button(
+                                    onClick = {
+                                        photoPickerLauncher.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = NervaBlueElectric),
+                                    shape = RoundedCornerShape(6.dp),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                                ) {
+                                    Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (customLogoUri != null) "Cambiar Logo (Galería)" else "Subir Logo (Galería)",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                if (customLogoUri != null) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            customLogoUri = null
+                                            onRemoveCustomLogo?.invoke()
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(6.dp),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFEF4444), modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Restablecer Escudo", color = Color(0xFFEF4444), fontSize = 10.sp)
+                                    }
+                                }
+                            }
                         }
                     }
 

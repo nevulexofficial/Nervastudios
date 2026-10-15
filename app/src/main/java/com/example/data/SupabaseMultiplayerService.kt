@@ -344,4 +344,35 @@ class SupabaseMultiplayerService {
             mockLeaderboard.toList()
         }
     }
+
+    /**
+     * Sincronizar y actualizar el logo del club en la base de datos de Supabase
+     */
+    suspend fun updateClubLogo(clubId: String, logoUri: String, base64Data: String): Boolean = withContext(Dispatchers.IO) {
+        if (!isConfigured) return@withContext true
+        try {
+            val json = JSONObject().apply {
+                put("club_id", clubId)
+                put("logo_url", logoUri)
+                if (base64Data.isNotBlank()) {
+                    put("logo_base64", base64Data.take(50000))
+                }
+                put("updated_at", System.currentTimeMillis())
+            }
+
+            val request = Request.Builder()
+                .url("$supabaseUrl/rest/v1/multiplayer_presence?manager_id=eq.$clubId")
+                .addHeader("apikey", supabaseKey)
+                .addHeader("Authorization", "Bearer $supabaseKey")
+                .addHeader("Content-Type", "application/json")
+                .patch(json.toString().toRequestBody(jsonMediaType))
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                response.isSuccessful
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
 }

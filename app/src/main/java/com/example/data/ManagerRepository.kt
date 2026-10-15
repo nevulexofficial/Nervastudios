@@ -1,5 +1,6 @@
 package com.example.data
 
+import com.example.audio.NervaAudioEngine
 import com.example.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -774,24 +775,64 @@ class ManagerRepository {
         }
     }
 
+    fun setClubCustomLogo(logoUri: String) {
+        _clubs.update { list ->
+            list.map {
+                if (it.isUserClub) it.copy(customLogoUri = logoUri) else it
+            }
+        }
+        _divisions.update { map ->
+            val div12 = map[12]
+            if (div12 != null) {
+                val updatedClubs = div12.clubs.map {
+                    if (it.isUserClub) it.copy(customLogoUri = logoUri) else it
+                }
+                map + (12 to div12.copy(clubs = updatedClubs))
+            } else map
+        }
+    }
+
     // --- BACKGROUND THEME & MUSIC ---
     fun setBackgroundTheme(theme: AppBackgroundTheme) {
         _backgroundTheme.value = theme
     }
 
     fun toggleMusic() {
-        _isMusicPlaying.value = !_isMusicPlaying.value
+        val willPlay = !_isMusicPlaying.value
+        _isMusicPlaying.value = willPlay
+        if (willPlay) {
+            NervaAudioEngine.playMusic(_currentTrackIndex.value, _customAudioUrl.value)
+        } else {
+            NervaAudioEngine.pauseMusic()
+        }
     }
 
     fun nextMusicTrack() {
-        _currentTrackIndex.value = (_currentTrackIndex.value + 1) % 4
+        val next = (_currentTrackIndex.value + 1) % 4
+        _currentTrackIndex.value = next
+        if (_isMusicPlaying.value) {
+            NervaAudioEngine.playMusic(next, _customAudioUrl.value)
+        }
+    }
+
+    fun selectMusicTrack(index: Int) {
+        val valid = index.coerceIn(0, 3)
+        _currentTrackIndex.value = valid
+        _isMusicPlaying.value = true
+        NervaAudioEngine.playMusic(valid, _customAudioUrl.value)
     }
 
     fun setMusicVolume(vol: Float) {
-        _musicVolume.value = vol.coerceIn(0f, 1f)
+        val clamped = vol.coerceIn(0f, 1f)
+        _musicVolume.value = clamped
+        NervaAudioEngine.setMusicVolume(clamped)
     }
 
     fun setCustomAudioUrl(url: String) {
         _customAudioUrl.value = url
+        if (url.isNotBlank()) {
+            _isMusicPlaying.value = true
+            NervaAudioEngine.playCustomAudio(url)
+        }
     }
 }

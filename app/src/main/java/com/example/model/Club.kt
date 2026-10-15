@@ -30,7 +30,8 @@ data class Club(
     val leagueId: String = "gamma_nerva",
     val divisionNumber: Int = 12, // All new clubs start in Division 12 of Liga Gamma Nerva!
     val stadiumCapacity: Int = 45_000,
-    val bannerStyle: String = "CYBER_NEON"
+    val bannerStyle: String = "CYBER_NEON",
+    val customLogoUri: String? = null
 ) {
     val goalDifference: Int
         get() = goalsFor - goalsAgainst
